@@ -12,6 +12,7 @@ import { CheckSquare, ChevronRight, Edit3, MoreHorizontal, Plus, Search, Trash2,
 import React, { useState } from 'react'
 import AddTradeModal from '../modals/add-trade-modal';
 import EditTradeModal from '../modals/edit-trade-modal';
+import { useAccounts } from '@/components/providers/account-provider';
 
 const initialTrades: TradeEntry[] = [
     {
@@ -45,13 +46,12 @@ const initialTrades: TradeEntry[] = [
 ]
 
 const LastTradingHistory = ({
-    currentAccount,
     rules = []
 }: {
-    currentAccount: Account,
     rules: TradingRule[]
 }) => {
 
+    const { currentAccount } = useAccounts();
     const [trades, setTrades] = useState<TradeEntry[]>(initialTrades)
     const [searchTerm, setSearchTerm] = useState("")
     const [selectedStatus, setSelectedStatus] = useState("all")
@@ -75,7 +75,7 @@ const LastTradingHistory = ({
         notes: "",
     })
 
-    const accountTrades = trades.filter((trade) => trade.accountId === currentAccount.id)
+    const accountTrades = trades.filter((trade) => trade.accountId === currentAccount?.id)
 
     const filteredTrades = accountTrades.filter((trade) => {
         const matchesSearch =

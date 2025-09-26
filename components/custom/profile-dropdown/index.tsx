@@ -5,20 +5,13 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from '@/components/ui/button';
 import { DollarSign, Key, LogOut, Settings, UserCircle } from 'lucide-react';
 import { useAuth } from '@/components/providers/auth-provider';
-import { Account } from '@/lib/types/account';
 import BalanceManagementModal from '../modals/balance-management-modal';
 import { useRouter } from 'next/navigation';
+import { useAccounts } from '@/components/providers/account-provider';
 
 const ProfileDropdown = () => {
     const { user } = useAuth()
-    const currentAccount: Account = {
-        id: "2343215",
-        name: "Test",
-        type: "forex",
-        initialDeposit: 100,
-        currentBalance: 104,
-        createdAt: "2025-04-23"
-    }
+    const { currentAccount } = useAccounts()
     const [isBalanceDialogOpen, setIsBalanceDialogOpen] = useState(false)
 
     const router = useRouter()
@@ -37,7 +30,7 @@ const ProfileDropdown = () => {
                             <div className="hidden sm:block text-left">
                                 <div className="text-sm font-medium">{user?.email}</div>
                                 <div className="text-xs text-muted-foreground">
-                                    ${currentAccount.currentBalance.toLocaleString()}
+                                    ${currentAccount?.currentBalance.toLocaleString()}
                                 </div>
                             </div>
                         </div>
@@ -67,7 +60,7 @@ const ProfileDropdown = () => {
             </DropdownMenu>
             <BalanceManagementModal open={isBalanceDialogOpen} onHide={() => {
                 setIsBalanceDialogOpen(false);
-            }} currentAccount={currentAccount} />
+            }} />
         </>
     )
 }

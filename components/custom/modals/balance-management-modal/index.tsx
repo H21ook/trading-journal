@@ -6,18 +6,18 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Account, BalanceTransaction } from '@/lib/types/account'
+import { BalanceTransaction } from '@/lib/types/account'
 import { Button } from '@/components/ui/button'
+import { useAccounts } from '@/components/providers/account-provider';
 
 const BalanceManagementModal = ({
     open,
-    onHide = () => { },
-    currentAccount
+    onHide = () => { }
 }: {
     open: boolean,
-    onHide: () => void,
-    currentAccount: Account
+    onHide: () => void
 }) => {
+    const { currentAccount } = useAccounts();
     const [newBalance, setNewBalance] = useState("")
     const [balanceTransactionType, setBalanceTransactionType] = useState<"deposit" | "withdrawal" | "adjustment">(
         "deposit",
@@ -29,7 +29,7 @@ const BalanceManagementModal = ({
         if (!newBalance || Number.parseFloat(newBalance) <= 0) return
 
         const amount = Number.parseFloat(newBalance)
-        const balanceBefore = currentAccount.currentBalance
+        const balanceBefore = currentAccount?.currentBalance || 0
         let balanceAfter: number
 
         switch (balanceTransactionType) {
@@ -37,7 +37,7 @@ const BalanceManagementModal = ({
                 balanceAfter = balanceBefore + amount
                 break
             case "withdrawal":
-                if (amount > currentAccount.currentBalance) {
+                if (amount > balanceBefore) {
                     alert("Insufficient available balance for withdrawal")
                     return
                 }
@@ -53,7 +53,7 @@ const BalanceManagementModal = ({
         // Create transaction record
         const transaction: BalanceTransaction = {
             id: Date.now().toString(),
-            accountId: currentAccount.id,
+            accountId: currentAccount!.id,
             type: balanceTransactionType,
             amount: amount,
             balanceBefore: balanceBefore,
@@ -88,7 +88,7 @@ const BalanceManagementModal = ({
                 <DialogHeader>
                     <DialogTitle className="text-card-foreground">Manage Account Balance</DialogTitle>
                     <DialogDescription className="text-muted-foreground">
-                        Add or remove funds from {currentAccount.name}
+                        Add or remove funds from {currentAccount?.name}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-4">
@@ -147,11 +147,11 @@ const BalanceManagementModal = ({
                     <div className="p-4 border border-border rounded-lg bg-muted/10">
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Current Balance:</span>
-                            <span className="text-card-foreground">${currentAccount.currentBalance.toLocaleString()}</span>
+                            <span className="text-card-foreground">${currentAccount?.currentBalance.toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Available Balance:</span>
-                            <span className="text-card-foreground">${currentAccount.currentBalance.toLocaleString()}</span>
+                            <span className="text-card-foreground">${currentAccount?.currentBalance.toLocaleString()}</span>
                         </div>
                     </div>
 

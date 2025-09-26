@@ -31,11 +31,19 @@ export interface TradeEntry {
   closureType?: "TP" | "SL" | "BE" | "CUSTOM"; // Added closure type tracking
 }
 
+export enum SymbolType {
+  FOREX = "forex",
+  STOCKS = "stocks",
+  CRYPTO = "crypto",
+  FUTURES = "futures",
+  INDICES = "indices",
+}
 export interface Symbol {
   id: string;
   symbol: string;
   name: string;
-  type: "forex" | "stocks" | "crypto";
+  type: SymbolType;
+  isActive?: boolean;
   createdAt: string;
 }
 

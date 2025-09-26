@@ -2,38 +2,22 @@
 
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import {
   CheckSquare,
   Hash,
 } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/providers/auth-provider"
-import { Account } from "@/lib/types/account"
 import { TradeEntry, TradingRule } from "@/lib/types/trade"
 import StatCards from "@/components/custom/stat-cards"
 import TradingRulesModal from "@/components/custom/modals/trading-rules-modal"
 import SymbolManageModal from "@/components/custom/modals/symbol-manage-modal"
 import ProfileDropdown from "@/components/custom/profile-dropdown"
 import LastTradingHistory from "@/components/custom/last-trading-history"
-
-
-// Interface for balance transactions
-
-const initialAccounts: Account[] = [
-  {
-    id: "1",
-    name: "Main Stocks",
-    type: "stocks",
-    initialDeposit: 10000,
-    currentBalance: 10000,
-    createdAt: "2024-01-01",
-  },
-]
+import { useAccounts } from "@/components/providers/account-provider"
+import AccountCreateForm from "@/components/custom/account-create-form/page"
 
 const initialTrades: TradeEntry[] = [
   {
@@ -97,9 +81,8 @@ export default function TradingJournal() {
   const [isLoading, setIsLoading] = useState(true)
   const router = useRouter()
 
-  const [accounts, setAccounts] = useState<Account[]>(initialAccounts)
-  const [currentAccountId, setCurrentAccountId] = useState<string>(initialAccounts[0]?.id || "")
-  const [isCreateAccountDialogOpen, setIsCreateAccountDialogOpen] = useState(false)
+  const { accounts, currentAccount, changeAccount } = useAccounts();
+
   const [newAccount, setNewAccount] = useState<{
     name: string,
     type: "forex" | "stocks" | "crypto",
@@ -122,14 +105,6 @@ export default function TradingJournal() {
   useEffect(() => {
     const checkAuth = () => {
       try {
-        const savedAccounts = localStorage.getItem("accounts")
-        if (savedAccounts) {
-          const parsedAccounts = JSON.parse(savedAccounts)
-          setAccounts(parsedAccounts)
-          if (parsedAccounts.length > 0) {
-            setCurrentAccountId(parsedAccounts[0].id)
-          }
-        }
 
         const savedTrades = localStorage.getItem("trades")
         if (savedTrades) {
@@ -151,41 +126,6 @@ export default function TradingJournal() {
 
     checkAuth()
   }, [router])
-
-  const handleCreateAccount = () => {
-    if (!newAccount.name.trim() || !newAccount.initialDeposit || Number.parseFloat(newAccount.initialDeposit) <= 0)
-      return
-
-    const account: Account = {
-      id: Date.now().toString(),
-      name: newAccount.name,
-      type: newAccount.type,
-      initialDeposit: Number.parseFloat(newAccount.initialDeposit),
-      currentBalance: Number.parseFloat(newAccount.initialDeposit),
-      createdAt: new Date().toISOString().split("T")[0],
-    }
-
-    const updatedAccounts = [...accounts, account]
-    setAccounts(updatedAccounts)
-    localStorage.setItem("accounts", JSON.stringify(updatedAccounts))
-
-    // Set as current account if it's the first one
-    if (accounts.length === 0) {
-      setCurrentAccountId(account.id)
-    }
-
-    setNewAccount({
-      name: "",
-      type: "stocks",
-      initialDeposit: "",
-    })
-    setIsCreateAccountDialogOpen(false)
-  }
-
-  // Function to handle account change
-  const handleAccountChange = (accountId: string) => {
-    setCurrentAccountId(accountId)
-  }
 
   // Function to open edit trade dialog
 
@@ -209,74 +149,8 @@ export default function TradingJournal() {
 
   // Handle case where there are no accounts yet
   if (accounts.length === 0) {
-    return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Card className="w-full max-w-md bg-card border-border">
-          <CardHeader className="text-center">
-            <CardTitle className="text-card-foreground">Welcome to Trading Journal</CardTitle>
-            <p className="text-muted-foreground">Create your first trading account to get started</p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="accountName" className="text-card-foreground">
-                Account Name
-              </Label>
-              <Input
-                id="accountName"
-                value={newAccount.name}
-                onChange={(e) => setNewAccount({ ...newAccount, name: e.target.value })}
-                placeholder="e.g., Main Stocks, Crypto Portfolio"
-                className="bg-input border-border text-foreground"
-              />
-            </div>
-            <div>
-              <Label htmlFor="accountType" className="text-card-foreground">
-                Account Type
-              </Label>
-              <Select
-                value={newAccount.type}
-                onValueChange={(value: "forex" | "stocks" | "crypto") => setNewAccount({ ...newAccount, type: value })}
-              >
-                <SelectTrigger className="bg-input border-border text-foreground">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-popover border-border">
-                  <SelectItem value="stocks" className="text-popover-foreground">
-                    Stocks
-                  </SelectItem>
-                  <SelectItem value="forex" className="text-popover-foreground">
-                    Forex
-                  </SelectItem>
-                  <SelectItem value="crypto" className="text-popover-foreground">
-                    Crypto
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="initialDeposit" className="text-card-foreground">
-                Initial Deposit
-              </Label>
-              <Input
-                id="initialDeposit"
-                type="number"
-                step="0.01"
-                value={newAccount.initialDeposit}
-                onChange={(e) => setNewAccount({ ...newAccount, initialDeposit: e.target.value })}
-                placeholder="10000.00"
-                className="bg-input border-border text-foreground"
-              />
-            </div>
-            <Button onClick={handleCreateAccount} className="w-full bg-primary hover:bg-primary/90">
-              Create Account
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    )
+    return <AccountCreateForm />
   }
-
-  const currentAccount = accounts.find((acc) => acc.id === currentAccountId) || accounts[0]
 
 
   return (
@@ -316,7 +190,7 @@ export default function TradingJournal() {
 
         {/* Account Selection */}
         <div className="mb-6">
-          <Select value={currentAccountId} onValueChange={handleAccountChange}>
+          <Select value={currentAccount!.id} onValueChange={changeAccount}>
             <SelectTrigger className="w-full sm:w-64 bg-input border-border text-foreground">
               <SelectValue />
             </SelectTrigger>
@@ -335,10 +209,10 @@ export default function TradingJournal() {
           </Select>
         </div>
 
-        <StatCards currentAccount={currentAccount} />
+        <StatCards />
 
         {/* Search and Filter */}
-        <LastTradingHistory currentAccount={currentAccount} rules={rules} />
+        <LastTradingHistory rules={rules} />
 
         {/* Trading Rules Management Dialog */}
         <TradingRulesModal rules={rules} open={isRulesDialogOpen} onHide={() => {

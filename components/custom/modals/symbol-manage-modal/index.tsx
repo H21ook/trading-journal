@@ -1,20 +1,21 @@
 "use client";
 
+import { useReferences } from '@/components/providers/reference-data-provider';
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Symbol } from '@/lib/types/trade'
+import { Symbol, SymbolType } from '@/lib/types/trade'
 import { Hash, Plus, Trash2 } from 'lucide-react'
 import React, { useState } from 'react'
 
 const initialSymbols: Symbol[] = [
-    { id: "1", symbol: "AAPL", name: "Apple Inc.", type: "stocks", createdAt: "2024-01-01" },
-    { id: "2", symbol: "TSLA", name: "Tesla Inc.", type: "stocks", createdAt: "2024-01-01" },
-    { id: "3", symbol: "EURUSD", name: "Euro/US Dollar", type: "forex", createdAt: "2024-01-01" },
-    { id: "4", symbol: "BTCUSD", name: "Bitcoin/US Dollar", type: "crypto", createdAt: "2024-01-01" },
+    { id: "1", symbol: "AAPL", name: "Apple Inc.", type: SymbolType.STOCKS, createdAt: "2024-01-01" },
+    { id: "2", symbol: "TSLA", name: "Tesla Inc.", type: SymbolType.STOCKS, createdAt: "2024-01-01" },
+    { id: "3", symbol: "EURUSD", name: "Euro/US Dollar", type: SymbolType.FOREX, createdAt: "2024-01-01" },
+    { id: "4", symbol: "BTCUSD", name: "Bitcoin/US Dollar", type: SymbolType.CRYPTO, createdAt: "2024-01-01" },
 ]
 
 const SymbolManageModal = ({
@@ -28,7 +29,7 @@ const SymbolManageModal = ({
     const [newSymbol, setNewSymbol] = useState<Omit<Symbol, "id" | "createdAt">>({
         symbol: "",
         name: "",
-        type: "stocks" as const,
+        type: SymbolType.STOCKS,
     })
 
     const deleteSymbol = (symbolId: string) => {
@@ -55,10 +56,16 @@ const SymbolManageModal = ({
         setNewSymbol({
             symbol: "",
             name: "",
-            type: "stocks",
+            type: SymbolType.FOREX,
         })
         onHide();
     }
+
+    // const createInitData = async () => {
+    //     const res = await initDataCreate();
+
+    //     console.log("initiate ", res)
+    // }
     return (
         <Dialog open={open} onOpenChange={(e) => {
             if (!e) {
@@ -98,7 +105,7 @@ const SymbolManageModal = ({
                                 </Label>
                                 <Select
                                     value={newSymbol.type}
-                                    onValueChange={(value: "forex" | "stocks" | "crypto") =>
+                                    onValueChange={(value: SymbolType) =>
                                         setNewSymbol({ ...newSymbol, type: value })
                                     }
                                 >

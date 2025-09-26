@@ -1,16 +1,24 @@
 "use client";
 
+import { useAccounts } from '@/components/providers/account-provider';
+import { useReferences } from '@/components/providers/reference-data-provider';
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { Combobox } from '@/components/ui/combobox';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { Account } from '@/lib/types/account';
-import { NewEntry, Symbol, TradeEntry } from '@/lib/types/trade';
+import { NewEntry, Symbol, TradeEntry, TradingRule } from '@/lib/types/trade';
 import { CheckSquare, Hash } from 'lucide-react'
 import React, { useState } from 'react'
+import { SymbolSelector } from '../../symbol-selector';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Controller, FieldValues, useForm } from 'react-hook-form';
+import { Separator } from '@/components/ui/separator';
+import { CheckedState } from '@radix-ui/react-checkbox';
 
 const emotionOptions = [
     "Confident",
@@ -26,6 +34,29 @@ const emotionOptions = [
     "Optimistic",
     "Cautious",
 ]
+const initialRules: TradingRule[] = [
+    {
+        id: "1",
+        title: "Always set SL/TP",
+        description: "Every trade must have both stop loss and take profit levels defined",
+        isActive: true,
+        createdAt: "2024-01-01",
+    },
+    {
+        id: "2",
+        title: "Follow market structure",
+        description: "Only trade in direction of higher timeframe trend",
+        isActive: true,
+        createdAt: "2024-01-01",
+    },
+    {
+        id: "3",
+        title: "Risk max 2% per trade",
+        description: "Position size should not risk more than 2% of account balance",
+        isActive: true,
+        createdAt: "2024-01-01",
+    },
+]
 
 const AddTradeModal = ({
     open,
@@ -34,21 +65,29 @@ const AddTradeModal = ({
     open: boolean,
     onHide: () => void
 }) => {
-    const currentAccount: Account = {
-        id: "2343215",
-        name: "Test",
-        type: "forex",
-        initialDeposit: 100,
-        currentBalance: 104,
-        createdAt: "2025-04-23"
-    }
+    const { symbols } = useReferences();
+    const { currentAccount } = useAccounts();
+
+    const { control, handleSubmit } = useForm<{
+        emotion: string,
+        rules: string[]
+        riskToReward?: string,
+        action: string
+    }>({
+        defaultValues: {
+            emotion: emotionOptions[0],
+            rules: [],
+            riskToReward: "2",
+            action: "buy"
+        }
+    })
     const [selectedRules, setSelectedRules] = useState<string[]>([])
     const [tradeEmotions, setTradeEmotions] = useState("")
     const [tradeHashtags, setTradeHashtags] = useState("")
-    const rules: any[] = []
-    const userSymbols: Symbol[] = [];
+    const rules: any[] = initialRules;
+
     const [newTrade, setNewTrade] = useState<NewEntry>({
-        symbol: userSymbols?.[0]?.symbol,
+        symbol: symbols?.[0]?.symbol,
         action: "buy",
         quantity: "",
         entryPrice: "",
@@ -87,38 +126,38 @@ const AddTradeModal = ({
         }
     }
 
-    const handleAddTrade = () => {
-        if (!newTrade.symbol.trim() || !newTrade.quantity || !newTrade.entryPrice) return
+    const handleAddTrade = (values: FieldValues) => {
+        // if (!newTrade.symbol.trim() || !newTrade.quantity || !newTrade.entryPrice) return
 
-        const hashtags = tradeHashtags
-            .split(/[,\s]+/)
-            .filter((tag) => tag.trim())
-            .map((tag) => (tag.startsWith("#") ? tag : `#${tag}`))
+        // const hashtags = tradeHashtags
+        //     .split(/[,\s]+/)
+        //     .filter((tag) => tag.trim())
+        //     .map((tag) => (tag.startsWith("#") ? tag : `#${tag}`))
 
-        // Calculate position size and risk
-        const entryPrice = Number.parseFloat(newTrade.entryPrice)
-        const quantity = Number.parseFloat(newTrade.quantity)
-        const stopLoss = newTrade.stopLossAmount ? Number.parseFloat(newTrade.stopLossAmount) : undefined
+        // // Calculate position size and risk
+        // const entryPrice = Number.parseFloat(newTrade.entryPrice)
+        // const quantity = Number.parseFloat(newTrade.quantity)
+        // const stopLoss = newTrade.stopLossAmount ? Number.parseFloat(newTrade.stopLossAmount) : undefined
 
-        const trade: TradeEntry = {
-            id: Date.now().toString(),
-            accountId: currentAccount.id,
-            symbol: newTrade.symbol.toUpperCase(),
-            action: newTrade.action,
-            quantity: quantity,
-            entryPrice: entryPrice,
-            takeProfitAmount: newTrade.takeProfitAmount ? Number.parseFloat(newTrade.takeProfitAmount) : undefined,
-            stopLossAmount: stopLoss,
-            date: new Date().toISOString().split("T")[0],
-            notes: newTrade.notes,
-            status: "open", // Always create as open
-            rulesFollowed: selectedRules,
-            emotions: tradeEmotions,
-            hashtags: hashtags,
-            riskRewardRatio: newTrade.riskRewardRatio,
-        }
+        // const trade: TradeEntry = {
+        //     id: Date.now().toString(),
+        //     accountId: currentAccount!.id,
+        //     symbol: newTrade.symbol.toUpperCase(),
+        //     action: newTrade.action,
+        //     quantity: quantity,
+        //     entryPrice: entryPrice,
+        //     takeProfitAmount: newTrade.takeProfitAmount ? Number.parseFloat(newTrade.takeProfitAmount) : undefined,
+        //     stopLossAmount: stopLoss,
+        //     date: new Date().toISOString().split("T")[0],
+        //     notes: newTrade.notes,
+        //     status: "open", // Always create as open
+        //     rulesFollowed: selectedRules,
+        //     emotions: tradeEmotions,
+        //     hashtags: hashtags,
+        //     riskRewardRatio: newTrade.riskRewardRatio,
+        // }
 
-        console.log("new trade ", trade)
+        console.log("new trade ", values)
         // const updatedTrades = [trade, ...trades]
         // setTrades(updatedTrades)
         // localStorage.setItem("trades", JSON.stringify(updatedTrades))
@@ -146,96 +185,120 @@ const AddTradeModal = ({
                 onHide()
             }
         }}>
-            <DialogContent className="bg-card border-border max-w-[95vw] max-h-[90vh] overflow-y-auto">
+            <DialogContent className="bg-card border-border max-w-3xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
                     <DialogTitle className="text-card-foreground">Add New Trade</DialogTitle>
                     <DialogDescription className="text-muted-foreground">
-                        Record a new trading position for {currentAccount.name}
+                        Record a new trading position for {currentAccount?.name}
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-6">
-                    <div className="space-y-3">
-                        <Label className="text-card-foreground font-medium flex items-center gap-2">
-                            <CheckSquare className="w-4 h-4" />
-                            Trading Rules Checklist
-                        </Label>
-                        <div className="grid grid-cols-1 gap-2 p-4 border border-border rounded-lg bg-muted/10">
-                            {rules
-                                .filter((rule) => rule.isActive)
-                                .map((rule) => (
-                                    <div key={rule.id} className="flex items-start gap-3">
-                                        <input
-                                            type="checkbox"
-                                            checked={selectedRules.includes(rule.id)}
-                                            onChange={(e) => {
-                                                if (e.target.checked) {
-                                                    setSelectedRules([...selectedRules, rule.id])
-                                                } else {
-                                                    setSelectedRules(selectedRules.filter((id) => id !== rule.id))
-                                                }
-                                            }}
-                                            className="mt-1"
-                                        />
-                                        <div>
-                                            <p className="text-sm font-medium text-card-foreground">{rule.title}</p>
-                                            <p className="text-xs text-muted-foreground">{rule.description}</p>
+                    <Controller
+                        name="rules"
+                        control={control}
+                        render={({ field: { onChange, value } }) => {
+                            const handleCheck = (checked: CheckedState, id: string) => {
+                                if (checked) {
+                                    if (id === "all") {
+                                        onChange(rules.map(rule => rule.id))
+                                    } else {
+                                        onChange([...value, id])
+                                    }
+                                    return;
+                                }
+                                if (id === "all") {
+                                    onChange([])
+                                } else {
+                                    onChange(
+                                        value?.filter(
+                                            (val) => val !== id
+                                        )
+                                    )
+                                }
+                            }
+                            return (<div>
+                                <Label className="text-card-foreground font-medium flex items-center gap-2 mb-2">
+                                    Trading Rules Checklist
+                                </Label>
+
+                                <div className="grid grid-cols-1 rounded-lg bg-background">
+                                    <div className='border-b p-2 pb-1'>
+                                        <div className='flex items-center gap-3 transition-all hover:bg-muted/50 py-1.5 px-2 rounded-sm cursor-pointer' onClick={() => {
+                                            const checked = rules.length !== value.length;
+                                            handleCheck(checked, "all")
+                                        }}>
+                                            <Checkbox
+                                                checked={value.length === rules.length}
+                                                onCheckedChange={() => { }}
+                                            />
+                                            <div>
+                                                <p className="text-sm font-medium text-card-foreground">Check all rules</p>
+                                            </div>
                                         </div>
                                     </div>
-                                ))}
-                        </div>
-                    </div>
+                                    <div className='grid grid-cols-1 gap-1 p-2 pt-1'>
+                                        {rules
+                                            .filter((rule) => rule.isActive)
+                                            .map((rule) => (
+                                                <div key={rule.id} className='flex items-center gap-3 transition-all hover:bg-muted/50 py-1.5 px-2 rounded-sm cursor-pointer' onClick={() => {
+                                                    const checked = !value?.includes(rule.id);
+                                                    handleCheck(checked, rule.id)
+                                                }}>
+                                                    <Checkbox
+                                                        checked={value.includes(rule.id)}
+                                                        onCheckedChange={() => { }}
+                                                    />
+
+                                                    <div>
+                                                        <p className="text-sm font-medium text-card-foreground">{rule.title}</p>
+                                                        <p className="text-xs text-muted-foreground">{rule.description}</p>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                    </div>
+                                </div>
+                            </div>)
+                        }}
+                    />
+
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <Label htmlFor="symbol" className="text-card-foreground flex items-center gap-2">
-                                <Hash className="w-4 h-4" />
+                            <Label htmlFor="symbol" className="text-card-foreground">
                                 Symbol
                             </Label>
-                            <Select
-                                value={newTrade.symbol}
-                                onValueChange={(value) => setNewTrade({ ...newTrade, symbol: value })}
-                            >
-                                <SelectTrigger className="bg-input border-border text-foreground">
-                                    <SelectValue placeholder="Select symbol" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-popover border-border">
-                                    {userSymbols.map((symbol) => (
-                                        <SelectItem key={symbol.id} value={symbol.symbol} className="text-popover-foreground">
-                                            <div className="flex items-center justify-between w-full">
-                                                <span>{symbol.symbol}</span>
-                                                <Badge variant="outline" className="ml-2 text-xs">
-                                                    {symbol.type.toUpperCase()}
-                                                </Badge>
-                                            </div>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <SymbolSelector />
                         </div>
-                        <div>
-                            <Label htmlFor="action" className="text-card-foreground">
-                                Action
-                            </Label>
-                            <Select
-                                value={newTrade.action}
-                                onValueChange={(value: "buy" | "sell") => setNewTrade({ ...newTrade, action: value })}
-                            >
-                                <SelectTrigger className="bg-input border-border text-foreground">
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-popover border-border">
-                                    <SelectItem value="buy" className="text-popover-foreground">
-                                        Buy
-                                    </SelectItem>
-                                    <SelectItem value="sell" className="text-popover-foreground">
-                                        Sell
-                                    </SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        <Controller
+                            control={control}
+                            name="action"
+                            render={({ field: { value, onChange } }) => {
+                                return (
+                                    <div>
+                                        <Label htmlFor="action" className="text-card-foreground">
+                                            Action
+                                        </Label>
+                                        <Select
+                                            value={value}
+                                            onValueChange={(e) => onChange(e)}
+                                        >
+                                            <SelectTrigger className="bg-input border-border text-foreground">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-popover border-border">
+                                                <SelectItem value="buy" className="text-popover-foreground">
+                                                    Buy
+                                                </SelectItem>
+                                                <SelectItem value="sell" className="text-popover-foreground">
+                                                    Sell
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>)
+                            }} />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    {/* <div className="grid grid-cols-2 gap-4">
                         <div>
                             <Label htmlFor="quantity" className="text-card-foreground">
                                 Quantity
@@ -278,33 +341,35 @@ const AddTradeModal = ({
                                 className="bg-input border-border text-foreground"
                             />
                         </div>
-                    </div>
+                    </div> */}
 
                     {/* Risk/Reward ratio selection */}
-                    <div>
-                        <Label className="text-card-foreground">Risk/Reward Ratio</Label>
-                        <Select value={newTrade.riskRewardRatio} onValueChange={handleRiskRewardChange}>
-                            <SelectTrigger className="bg-input border-border text-foreground">
-                                <SelectValue placeholder="Select ratio (auto-calculates TP)" />
-                            </SelectTrigger>
-                            <SelectContent className="bg-popover border-border">
-                                <SelectItem value="1:1" className="text-popover-foreground">
-                                    1:1 Risk/Reward
-                                </SelectItem>
-                                <SelectItem value="1:2" className="text-popover-foreground">
-                                    1:2 Risk/Reward
-                                </SelectItem>
-                                <SelectItem value="1:3" className="text-popover-foreground">
-                                    1:3 Risk/Reward
-                                </SelectItem>
-                                <SelectItem value="1:5" className="text-popover-foreground">
-                                    1:5 Risk/Reward
-                                </SelectItem>
-                            </SelectContent>
-                        </Select>
-                    </div>
+                    <Controller
+                        control={control}
+                        name="riskToReward"
+                        render={({ field: { value, onChange } }) => {
+                            return (<div>
+                                <Label htmlFor="riskToReward" className="text-card-foreground">
+                                    Risk/Reward Ratio
+                                </Label>
+                                <div className='relative'>
+                                    <Input
+                                        id="riskToReward"
+                                        type="number"
+                                        value={value}
+                                        onChange={(e) => onChange(e.target.value)}
+                                        placeholder="Reward"
+                                        className="bg-input border-border text-foreground pl-[30px]"
+                                    />
+                                    <div className='absolute inset-y-0 h-full flex items-center pl-3 pt-0.5 text-base md:text-sm'>1 :</div>
+                                </div>
+                            </div>)
+                        }}
+                    />
 
-                    <div className="grid grid-cols-2 gap-4">
+
+
+                    {/* <div className="grid grid-cols-2 gap-4">
                         <div>
                             <Label htmlFor="stopLossAmount" className="text-card-foreground">
                                 Stop Loss
@@ -352,26 +417,32 @@ const AddTradeModal = ({
                                 disabled={!!newTrade.riskRewardRatio}
                             />
                         </div>
-                    </div>
+                    </div> */}
 
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <Label htmlFor="emotions" className="text-card-foreground">
-                                Emotions
-                            </Label>
-                            <Select value={tradeEmotions} onValueChange={setTradeEmotions}>
-                                <SelectTrigger className="bg-input border-border text-foreground">
-                                    <SelectValue placeholder="Select emotion" />
-                                </SelectTrigger>
-                                <SelectContent className="bg-popover border-border">
-                                    {emotionOptions.map((emotion) => (
-                                        <SelectItem key={emotion} value={emotion} className="text-popover-foreground">
-                                            {emotion}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        </div>
+                        <Controller
+                            control={control}
+                            name="emotion"
+                            render={({ field: { value, onChange } }) => {
+                                return (
+                                    <div>
+                                        <Label htmlFor="emotions" className="text-card-foreground">
+                                            Emotions
+                                        </Label>
+                                        <Select value={value} onValueChange={onChange}>
+                                            <SelectTrigger className="bg-input border-border text-foreground">
+                                                <SelectValue placeholder="Select emotion" />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-popover border-border">
+                                                {emotionOptions.map((emotion) => (
+                                                    <SelectItem key={emotion} value={emotion} className="text-popover-foreground">
+                                                        {emotion}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>)
+                            }} />
                         <div>
                             <Label htmlFor="hashtags" className="text-card-foreground">
                                 Strategy Tags
@@ -400,12 +471,12 @@ const AddTradeModal = ({
                         />
                     </div>
 
-                    <Button onClick={handleAddTrade} className="w-full bg-primary hover:bg-primary/90">
+                    <Button onClick={handleSubmit(handleAddTrade)} className="w-full bg-primary hover:bg-primary/90">
                         Add Trade
                     </Button>
                 </div>
             </DialogContent>
-        </Dialog>
+        </Dialog >
     )
 }
 

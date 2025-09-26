@@ -1,14 +1,11 @@
 "use client"
+import { useAccounts } from '@/components/providers/account-provider'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Account } from '@/lib/types/account'
 import { BarChart3, Gauge, Target, Wallet } from 'lucide-react'
 import React from 'react'
 
-const StatCards = ({
-    currentAccount
-}: {
-    currentAccount: Account
-}) => {
+const StatCards = () => {
+    const { currentAccount } = useAccounts();
     // const calculateConsistencyScore = () => {
     //     if (accountTrades.length === 0) return 0
 
@@ -82,9 +79,9 @@ const StatCards = ({
                 </CardHeader>
                 <CardContent>
                     <div className="text-xl md:text-2xl font-bold text-card-foreground">
-                        ${currentAccount.currentBalance.toLocaleString()}
+                        ${currentAccount?.currentBalance?.toLocaleString()}
                     </div>
-                    <p className="text-xs text-muted-foreground">Available: ${currentAccount.currentBalance.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Available: ${currentAccount?.currentBalance.toLocaleString()}</p>
                 </CardContent>
             </Card>
 
