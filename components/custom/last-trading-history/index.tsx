@@ -7,53 +7,24 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Account } from '@/lib/types/account';
-import { TradeEntry, TradingRule } from '@/lib/types/trade';
+import { TradeEntry } from '@/lib/types/trade';
 import { CheckSquare, ChevronRight, Edit3, MoreHorizontal, Plus, Search, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
-import React, { useState } from 'react'
+import React, { useCallback, useEffect, useState } from 'react'
 import AddTradeModal from '../modals/add-trade-modal';
 import EditTradeModal from '../modals/edit-trade-modal';
 import { useAccounts } from '@/components/providers/account-provider';
+import { useReferences } from '@/components/providers/reference-data-provider';
+import { useAuth } from '@/components/providers/auth-provider';
+import { createClient } from '@/utils/supabase/client';
 
-const initialTrades: TradeEntry[] = [
-    {
-        id: "1",
-        accountId: "1", // Added accountId
-        symbol: "AAPL",
-        action: "buy",
-        quantity: 100,
-        entryPrice: 150.25,
-        exitPrice: 155.8,
-        takeProfitAmount: 160.0,
-        stopLossAmount: 145.0,
-        date: "2024-01-15",
-        notes: "Strong earnings report, good technical setup",
-        status: "closed",
-        profitLoss: 555,
-    },
-    {
-        id: "2",
-        accountId: "1", // Added accountId
-        symbol: "TSLA",
-        action: "buy",
-        quantity: 50,
-        entryPrice: 245.3,
-        takeProfitAmount: 260.0,
-        stopLossAmount: 235.0,
-        date: "2024-01-14",
-        notes: "Breakout above resistance, targeting $260",
-        status: "open",
-    },
-]
+const LastTradingHistory = () => {
 
-const LastTradingHistory = ({
-    rules = []
-}: {
-    rules: TradingRule[]
-}) => {
-
+    const { user } = useAuth();
     const { currentAccount } = useAccounts();
-    const [trades, setTrades] = useState<TradeEntry[]>(initialTrades)
+    const { rules, symbols } = useReferences();
+    const [trades, setTrades] = useState<TradeEntry[]>([])
     const [searchTerm, setSearchTerm] = useState("")
+    const [isLoading, setIsLoading] = useState(false)
     const [selectedStatus, setSelectedStatus] = useState("all")
     const [isDialogOpen, setIsDialogOpen] = useState(false)
     const [isTradeListCollapsed, setIsTradeListCollapsed] = useState(false)
@@ -62,6 +33,28 @@ const LastTradingHistory = ({
     const [isCloseTradeDialogOpen, setIsCloseTradeDialogOpen] = useState(false)
     const [tradeToClose, setTradeToClose] = useState<TradeEntry | null>(null)
     const [expandedTrades, setExpandedTrades] = useState<Set<string>>(new Set())
+
+    const getTrades = useCallback(async () => {
+        setIsLoading(true)
+        try {
+            const supabase = createClient();
+            if (user) {
+                const { data } = await supabase.from("trades").select().eq("userId", user?.id);
+                console.log("trades ", data)
+                setTrades(data as TradeEntry[]);
+            } else {
+                throw new Error("Unauthorized")
+            }
+        } catch (err) {
+
+        } finally {
+            setIsLoading(false)
+        }
+    }, [user]);
+
+    useEffect(() => {
+        getTrades();
+    }, [getTrades])
 
     const openCloseTradeDialog = (trade: TradeEntry) => {
         setTradeToClose(trade)
@@ -78,9 +71,11 @@ const LastTradingHistory = ({
     const accountTrades = trades.filter((trade) => trade.accountId === currentAccount?.id)
 
     const filteredTrades = accountTrades.filter((trade) => {
+        const symbol = symbols.find(item => item.id === trade.symbolId);
         const matchesSearch =
-            trade.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            trade.notes.toLowerCase().includes(searchTerm.toLowerCase())
+            symbol?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            symbol?.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            trade.note?.toLowerCase().includes(searchTerm.toLowerCase())
         const matchesStatus = selectedStatus === "all" || trade.status === selectedStatus
         return matchesSearch && matchesStatus
     })
@@ -92,23 +87,23 @@ const LastTradingHistory = ({
             : "bg-red-500/20 text-red-400 border-red-500/30"
     }
 
-    const openEditTradeDialog = (trade: TradeEntry) => {
-        setTradeToEdit(trade)
-        setEditTradeData({
-            stopLossAmount: trade.stopLossAmount?.toString() || "",
-            takeProfitAmount: trade.takeProfitAmount?.toString() || "",
-            quantity: trade.quantity.toString(),
-            notes: trade.notes,
-        })
-        setIsEditTradeDialogOpen(true)
-    }
+    // const openEditTradeDialog = (trade: TradeEntry) => {
+    //     setTradeToEdit(trade)
+    //     setEditTradeData({
+    //         stopLossAmount: trade.stopLossAmount?.toString() || "",
+    //         takeProfitAmount: trade.takeProfitAmount?.toString() || "",
+    //         quantity: trade.quantity.toString(),
+    //         notes: trade.notes,
+    //     })
+    //     setIsEditTradeDialogOpen(true)
+    // }
 
-    const moveSLToBreakEven = (trade: TradeEntry) => {
-        const updatedTrade = { ...trade, stopLossAmount: trade.entryPrice }
-        const updatedTrades = trades.map((t) => (t.id === trade.id ? updatedTrade : t))
-        setTrades(updatedTrades)
-        localStorage.setItem("trades", JSON.stringify(updatedTrades))
-    }
+    // const moveSLToBreakEven = (trade: TradeEntry) => {
+    //     const updatedTrade = { ...trade, stopLossAmount: trade.entryPrice }
+    //     const updatedTrades = trades.map((t) => (t.id === trade.id ? updatedTrade : t))
+    //     setTrades(updatedTrades)
+    //     localStorage.setItem("trades", JSON.stringify(updatedTrades))
+    // }
 
     const toggleTradeExpansion = (tradeId: string) => {
         const newExpanded = new Set(expandedTrades)
@@ -177,115 +172,119 @@ const LastTradingHistory = ({
                                     <TableRow className="border-border hover:bg-muted/50">
                                         <TableHead className="text-card-foreground">Symbol</TableHead>
                                         <TableHead className="text-card-foreground">Action</TableHead>
-                                        <TableHead className="text-card-foreground">Quantity</TableHead>
+                                        {/* <TableHead className="text-card-foreground">Quantity</TableHead>
                                         <TableHead className="text-card-foreground">Entry Price</TableHead>
                                         <TableHead className="text-card-foreground">Take Profit</TableHead>
                                         <TableHead className="text-card-foreground">Stop Loss</TableHead>
                                         <TableHead className="text-card-foreground">Exit Price</TableHead>
-                                        <TableHead className="text-card-foreground">P&L</TableHead>
+                                        <TableHead className="text-card-foreground">P&L</TableHead> */}
                                         <TableHead className="text-card-foreground">Status</TableHead>
                                         <TableHead className="text-card-foreground">Date</TableHead>
                                         <TableHead className="text-card-foreground w-12"></TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {filteredTrades.map((trade) => (
-                                        <TableRow key={trade.id} className="border-border hover:bg-muted/50">
-                                            <TableCell className="font-medium text-card-foreground">
-                                                <div className="flex items-center gap-2">
-                                                    {trade.symbol}
-                                                    {trade.action === "buy" ? (
-                                                        <TrendingUp className="w-4 h-4 text-green-400" />
-                                                    ) : (
-                                                        <TrendingDown className="w-4 h-4 text-red-400" />
-                                                    )}
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge variant="outline" className="text-xs">
-                                                    {trade.action.toUpperCase()}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-card-foreground">{trade.quantity}</TableCell>
-                                            <TableCell className="text-card-foreground">${trade.entryPrice.toFixed(2)}</TableCell>
-                                            <TableCell className="text-card-foreground">
-                                                {trade.takeProfitAmount ? `$${trade.takeProfitAmount.toFixed(2)}` : "-"}
-                                            </TableCell>
-                                            <TableCell className="text-card-foreground">
-                                                {trade.stopLossAmount ? `$${trade.stopLossAmount.toFixed(2)}` : "-"}
-                                            </TableCell>
-                                            <TableCell className="text-card-foreground">
-                                                {trade.exitPrice ? `$${trade.exitPrice.toFixed(2)}` : "-"}
-                                            </TableCell>
-                                            <TableCell>
-                                                {trade.profitLoss !== undefined ? (
-                                                    <Badge className={getProfitLossColor(trade.profitLoss)}>
-                                                        ${trade.profitLoss.toFixed(2)}
+                                    {filteredTrades.map((trade) => {
+                                        const symbol = symbols.find(item => item.id === trade.symbolId)
+                                        return (
+                                            <TableRow key={trade.id} className="border-border hover:bg-muted/50">
+                                                <TableCell className="font-medium text-card-foreground">
+                                                    <div className="flex items-center gap-2">
+                                                        {symbol?.symbol}
+                                                        {trade.action === "buy" ? (
+                                                            <TrendingUp className="w-4 h-4 text-green-400" />
+                                                        ) : (
+                                                            <TrendingDown className="w-4 h-4 text-red-400" />
+                                                        )}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge variant="outline" className="text-xs">
+                                                        {trade.action.toUpperCase()}
                                                     </Badge>
-                                                ) : (
-                                                    "-"
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                <Badge
-                                                    className={`text-xs ${trade.status === "open"
-                                                        ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
-                                                        : "bg-muted text-muted-foreground"
-                                                        }`}
-                                                >
-                                                    {trade.status.toUpperCase()}
-                                                </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-muted-foreground text-sm">
-                                                {new Date(trade.date).toLocaleDateString()}
-                                            </TableCell>
-                                            <TableCell>
-                                                <DropdownMenu>
-                                                    <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                                                            <MoreHorizontal className="h-4 w-4" />
-                                                        </Button>
-                                                    </DropdownMenuTrigger>
-                                                    <DropdownMenuContent align="end" className="bg-popover border-border">
-                                                        {trade.status === "open" && (
-                                                            <>
-                                                                <DropdownMenuItem
-                                                                    className="text-popover-foreground cursor-pointer"
-                                                                    onClick={() => openEditTradeDialog(trade)}
-                                                                >
-                                                                    <Edit3 className="w-4 h-4 mr-2" />
-                                                                    Edit Trade
-                                                                </DropdownMenuItem>
-                                                                <DropdownMenuItem
-                                                                    className="text-popover-foreground cursor-pointer"
-                                                                    onClick={() => openCloseTradeDialog(trade)}
-                                                                >
-                                                                    Close Position
-                                                                </DropdownMenuItem>
-                                                                {trade.stopLossAmount !== trade.entryPrice && (
+                                                </TableCell>
+                                                {/* <TableCell className="text-card-foreground">{trade.quantity}</TableCell>
+                                                <TableCell className="text-card-foreground">${trade.entryPrice.toFixed(2)}</TableCell>
+                                                <TableCell className="text-card-foreground">
+                                                    {trade.takeProfitAmount ? `$${trade.takeProfitAmount.toFixed(2)}` : "-"}
+                                                </TableCell>
+                                                <TableCell className="text-card-foreground">
+                                                    {trade.stopLossAmount ? `$${trade.stopLossAmount.toFixed(2)}` : "-"}
+                                                </TableCell>
+                                                <TableCell className="text-card-foreground">
+                                                    {trade.exitPrice ? `$${trade.exitPrice.toFixed(2)}` : "-"}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {trade.profitLoss !== undefined ? (
+                                                        <Badge className={getProfitLossColor(trade.profitLoss)}>
+                                                            ${trade.profitLoss.toFixed(2)}
+                                                        </Badge>
+                                                    ) : (
+                                                        "-"
+                                                    )}
+                                                </TableCell> */}
+                                                <TableCell>
+                                                    <Badge
+                                                        className={`text-xs ${trade.status === "open"
+                                                            ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
+                                                            : "bg-muted text-muted-foreground"
+                                                            }`}
+                                                    >
+                                                        {trade.status.toUpperCase()}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-muted-foreground text-sm">
+                                                    {new Date(trade.createdAt).toLocaleDateString()}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <DropdownMenu>
+                                                        <DropdownMenuTrigger asChild>
+                                                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                                                <MoreHorizontal className="h-4 w-4" />
+                                                            </Button>
+                                                        </DropdownMenuTrigger>
+                                                        <DropdownMenuContent align="end" className="bg-popover border-border">
+                                                            {trade.status === "open" && (
+                                                                <>
+                                                                    {/* <DropdownMenuItem
+                                                                        className="text-popover-foreground cursor-pointer"
+                                                                        onClick={() => openEditTradeDialog(trade)}
+                                                                    >
+                                                                        <Edit3 className="w-4 h-4 mr-2" />
+                                                                        Edit Trade
+                                                                    </DropdownMenuItem> */}
                                                                     <DropdownMenuItem
                                                                         className="text-popover-foreground cursor-pointer"
-                                                                        onClick={() => moveSLToBreakEven(trade)}
+                                                                        onClick={() => openCloseTradeDialog(trade)}
                                                                     >
-                                                                        Move SL to BE
+                                                                        Close Position
                                                                     </DropdownMenuItem>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                        <DropdownMenuItem className="text-destructive">
-                                                            <Trash2 className="w-4 h-4 mr-2" />
-                                                            Delete
-                                                        </DropdownMenuItem>
-                                                    </DropdownMenuContent>
-                                                </DropdownMenu>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                                                    {/* {trade.stopLossAmount !== trade.entryPrice && (
+                                                                        <DropdownMenuItem
+                                                                            className="text-popover-foreground cursor-pointer"
+                                                                            onClick={() => moveSLToBreakEven(trade)}
+                                                                        >
+                                                                            Move SL to BE
+                                                                        </DropdownMenuItem>
+                                                                    )} */}
+                                                                </>
+                                                            )}
+                                                            <DropdownMenuItem className="text-destructive">
+                                                                <Trash2 className="w-4 h-4 mr-2" />
+                                                                Delete
+                                                            </DropdownMenuItem>
+                                                        </DropdownMenuContent>
+                                                    </DropdownMenu>
+                                                </TableCell>
+                                            </TableRow>
+                                        )
+                                    }
+                                    )}
                                 </TableBody>
                             </Table>
                         </div>
 
-                        <div className="md:hidden space-y-3 p-4">
+                        {/* <div className="md:hidden space-y-3 p-4">
                             {filteredTrades.map((trade) => (
                                 <Card key={trade.id} className="bg-muted/20 border-border">
                                     <CardContent className="p-4">
@@ -455,7 +454,7 @@ const LastTradingHistory = ({
                                     </CardContent>
                                 </Card>
                             ))}
-                        </div>
+                        </div> */}
                     </div>
                 </CollapsibleContent>
             </Collapsible>

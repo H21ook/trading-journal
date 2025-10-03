@@ -2,23 +2,19 @@
 
 import { useAccounts } from '@/components/providers/account-provider';
 import { useReferences } from '@/components/providers/reference-data-provider';
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Combobox } from '@/components/ui/combobox';
+import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
-import { Account } from '@/lib/types/account';
-import { NewEntry, Symbol, TradeEntry, TradingRule } from '@/lib/types/trade';
-import { CheckSquare, Hash } from 'lucide-react'
-import React, { useState } from 'react'
+import { NewEntry } from '@/lib/types/trade';
+import React, { useState, useTransition } from 'react'
 import { SymbolSelector } from '../../symbol-selector';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Controller, FieldValues, useForm } from 'react-hook-form';
-import { Separator } from '@/components/ui/separator';
 import { CheckedState } from '@radix-ui/react-checkbox';
+import { createNewTrade } from '@/lib/actions/trade';
 
 const emotionOptions = [
     "Confident",
@@ -34,29 +30,6 @@ const emotionOptions = [
     "Optimistic",
     "Cautious",
 ]
-const initialRules: TradingRule[] = [
-    {
-        id: "1",
-        title: "Always set SL/TP",
-        description: "Every trade must have both stop loss and take profit levels defined",
-        isActive: true,
-        createdAt: "2024-01-01",
-    },
-    {
-        id: "2",
-        title: "Follow market structure",
-        description: "Only trade in direction of higher timeframe trend",
-        isActive: true,
-        createdAt: "2024-01-01",
-    },
-    {
-        id: "3",
-        title: "Risk max 2% per trade",
-        description: "Position size should not risk more than 2% of account balance",
-        isActive: true,
-        createdAt: "2024-01-01",
-    },
-]
 
 const AddTradeModal = ({
     open,
@@ -65,29 +38,34 @@ const AddTradeModal = ({
     open: boolean,
     onHide: () => void
 }) => {
-    const { symbols } = useReferences();
+    const { symbols, rules } = useReferences();
     const { currentAccount } = useAccounts();
+    const [isPending, startTransition] = useTransition();
 
     const { control, handleSubmit } = useForm<{
         emotion: string,
         rules: string[]
+        actionType: string,
         riskToReward?: string,
-        action: string
+        action: string,
+        symbol: string
+        note?: string
     }>({
         defaultValues: {
             emotion: emotionOptions[0],
             rules: [],
+            actionType: "market",
             riskToReward: "2",
-            action: "buy"
+            action: "buy",
+            note: "",
+            symbol: symbols?.[0]?.id
         }
     })
-    const [selectedRules, setSelectedRules] = useState<string[]>([])
-    const [tradeEmotions, setTradeEmotions] = useState("")
+
     const [tradeHashtags, setTradeHashtags] = useState("")
-    const rules: any[] = initialRules;
 
     const [newTrade, setNewTrade] = useState<NewEntry>({
-        symbol: symbols?.[0]?.symbol,
+        symbol: symbols?.[0]?.id,
         action: "buy",
         quantity: "",
         entryPrice: "",
@@ -127,37 +105,32 @@ const AddTradeModal = ({
     }
 
     const handleAddTrade = (values: FieldValues) => {
-        // if (!newTrade.symbol.trim() || !newTrade.quantity || !newTrade.entryPrice) return
+        if (!currentAccount) {
+            return;
+        }
+        startTransition(async () => {
+            const formData = new FormData();
+            formData.append("accountId", currentAccount.id.toString());
+            formData.append("symbolId", values.symbol)
+            formData.append("actionType", values.actionType)
+            formData.append("action", values.action)
+            formData.append("riskToReward", values.riskToReward)
+            formData.append("emotion", values.emotion)
+            formData.append("note", values.note)
+            values.rules?.forEach((rule: string) => {
+                formData.append("rules[]", rule)
+            })
 
-        // const hashtags = tradeHashtags
-        //     .split(/[,\s]+/)
-        //     .filter((tag) => tag.trim())
-        //     .map((tag) => (tag.startsWith("#") ? tag : `#${tag}`))
+            const res = await createNewTrade(formData);
 
-        // // Calculate position size and risk
-        // const entryPrice = Number.parseFloat(newTrade.entryPrice)
-        // const quantity = Number.parseFloat(newTrade.quantity)
-        // const stopLoss = newTrade.stopLossAmount ? Number.parseFloat(newTrade.stopLossAmount) : undefined
+            if (res.isOk) {
+                onHide();
+            } else {
+                alert(res.error)
+            }
+        })
 
-        // const trade: TradeEntry = {
-        //     id: Date.now().toString(),
-        //     accountId: currentAccount!.id,
-        //     symbol: newTrade.symbol.toUpperCase(),
-        //     action: newTrade.action,
-        //     quantity: quantity,
-        //     entryPrice: entryPrice,
-        //     takeProfitAmount: newTrade.takeProfitAmount ? Number.parseFloat(newTrade.takeProfitAmount) : undefined,
-        //     stopLossAmount: stopLoss,
-        //     date: new Date().toISOString().split("T")[0],
-        //     notes: newTrade.notes,
-        //     status: "open", // Always create as open
-        //     rulesFollowed: selectedRules,
-        //     emotions: tradeEmotions,
-        //     hashtags: hashtags,
-        //     riskRewardRatio: newTrade.riskRewardRatio,
-        // }
 
-        console.log("new trade ", values)
         // const updatedTrades = [trade, ...trades]
         // setTrades(updatedTrades)
         // localStorage.setItem("trades", JSON.stringify(updatedTrades))
@@ -232,7 +205,7 @@ const AddTradeModal = ({
                                                 onCheckedChange={() => { }}
                                             />
                                             <div>
-                                                <p className="text-sm font-medium text-card-foreground">Check all rules</p>
+                                                <p className="select-none text-sm font-medium text-card-foreground">Check all rules</p>
                                             </div>
                                         </div>
                                     </div>
@@ -249,7 +222,7 @@ const AddTradeModal = ({
                                                         onCheckedChange={() => { }}
                                                     />
 
-                                                    <div>
+                                                    <div className='select-none'>
                                                         <p className="text-sm font-medium text-card-foreground">{rule.title}</p>
                                                         <p className="text-xs text-muted-foreground">{rule.description}</p>
                                                     </div>
@@ -262,13 +235,49 @@ const AddTradeModal = ({
                     />
 
 
+                    <Controller
+                        control={control}
+                        name="symbol"
+                        render={({ field: { value, onChange } }) => {
+                            return (<div>
+                                <Label htmlFor="symbol" className="text-card-foreground">
+                                    Symbol
+                                </Label>
+                                <SymbolSelector value={value} onChange={onChange} />
+                            </div>)
+                        }} />
+
                     <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <Label htmlFor="symbol" className="text-card-foreground">
-                                Symbol
-                            </Label>
-                            <SymbolSelector />
-                        </div>
+                        <Controller
+                            control={control}
+                            name="actionType"
+                            render={({ field: { value, onChange } }) => {
+                                return (
+                                    <div>
+                                        <Label htmlFor="actionType" className="text-card-foreground">
+                                            Action type
+                                        </Label>
+                                        <Select
+                                            value={value}
+                                            onValueChange={(e) => onChange(e)}
+                                        >
+                                            <SelectTrigger className="bg-input border-border text-foreground">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent className="bg-popover border-border">
+                                                <SelectItem value="market" className="text-popover-foreground">
+                                                    Market
+                                                </SelectItem>
+                                                <SelectItem value="limit" className="text-popover-foreground">
+                                                    Limit
+                                                </SelectItem>
+                                                <SelectItem value="stop" className="text-popover-foreground">
+                                                    Stop
+                                                </SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>)
+                            }} />
                         <Controller
                             control={control}
                             name="action"
@@ -298,51 +307,6 @@ const AddTradeModal = ({
                             }} />
                     </div>
 
-                    {/* <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <Label htmlFor="quantity" className="text-card-foreground">
-                                Quantity
-                            </Label>
-                            <Input
-                                id="quantity"
-                                type="number"
-                                value={newTrade.quantity}
-                                onChange={(e) => setNewTrade({ ...newTrade, quantity: e.target.value })}
-                                placeholder="100"
-                                className="bg-input border-border text-foreground"
-                            />
-                        </div>
-                        <div>
-                            <Label htmlFor="entryPrice" className="text-card-foreground">
-                                Entry Price
-                            </Label>
-                            <Input
-                                id="entryPrice"
-                                type="number"
-                                step="0.01"
-                                value={newTrade.entryPrice}
-                                onChange={(e) => {
-                                    setNewTrade({ ...newTrade, entryPrice: e.target.value })
-                                    if (newTrade.riskRewardRatio && newTrade.stopLossAmount && e.target.value) {
-                                        const calculatedTP = calculateTakeProfit(
-                                            Number.parseFloat(e.target.value),
-                                            Number.parseFloat(newTrade.stopLossAmount),
-                                            newTrade.riskRewardRatio,
-                                            newTrade.action,
-                                        )
-                                        setNewTrade((prev) => ({
-                                            ...prev,
-                                            entryPrice: e.target.value,
-                                            takeProfitAmount: calculatedTP,
-                                        }))
-                                    }
-                                }}
-                                placeholder="150.25"
-                                className="bg-input border-border text-foreground"
-                            />
-                        </div>
-                    </div> */}
-
                     {/* Risk/Reward ratio selection */}
                     <Controller
                         control={control}
@@ -366,58 +330,6 @@ const AddTradeModal = ({
                             </div>)
                         }}
                     />
-
-
-
-                    {/* <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <Label htmlFor="stopLossAmount" className="text-card-foreground">
-                                Stop Loss
-                            </Label>
-                            <Input
-                                id="stopLossAmount"
-                                type="number"
-                                step="0.01"
-                                value={newTrade.stopLossAmount}
-                                onChange={(e) => {
-                                    setNewTrade({ ...newTrade, stopLossAmount: e.target.value })
-                                    if (newTrade.riskRewardRatio && newTrade.entryPrice && e.target.value) {
-                                        const calculatedTP = calculateTakeProfit(
-                                            Number.parseFloat(newTrade.entryPrice),
-                                            Number.parseFloat(e.target.value),
-                                            newTrade.riskRewardRatio,
-                                            newTrade.action,
-                                        )
-                                        setNewTrade((prev) => ({
-                                            ...prev,
-                                            stopLossAmount: e.target.value,
-                                            takeProfitAmount: calculatedTP,
-                                        }))
-                                    }
-                                }}
-                                placeholder="145.00"
-                                className="bg-input border-border text-foreground"
-                            />
-                        </div>
-                        <div>
-                            <Label htmlFor="takeProfitAmount" className="text-card-foreground">
-                                Take Profit
-                                {newTrade.riskRewardRatio && (
-                                    <span className="text-xs text-muted-foreground ml-2">(Auto-calculated)</span>
-                                )}
-                            </Label>
-                            <Input
-                                id="takeProfitAmount"
-                                type="number"
-                                step="0.01"
-                                value={newTrade.takeProfitAmount}
-                                onChange={(e) => setNewTrade({ ...newTrade, takeProfitAmount: e.target.value })}
-                                placeholder="160.00"
-                                className="bg-input border-border text-foreground"
-                                disabled={!!newTrade.riskRewardRatio}
-                            />
-                        </div>
-                    </div> */}
 
                     <div className="grid grid-cols-2 gap-4">
                         <Controller
@@ -443,7 +355,7 @@ const AddTradeModal = ({
                                         </Select>
                                     </div>)
                             }} />
-                        <div>
+                        {/* <div>
                             <Label htmlFor="hashtags" className="text-card-foreground">
                                 Strategy Tags
                             </Label>
@@ -454,25 +366,31 @@ const AddTradeModal = ({
                                 placeholder="#breakout #trend-follow"
                                 className="bg-input border-border text-foreground"
                             />
-                        </div>
+                        </div> */}
                     </div>
 
-                    <div>
-                        <Label htmlFor="notes" className="text-card-foreground">
-                            Notes
-                        </Label>
-                        <Textarea
-                            id="notes"
-                            value={newTrade.notes}
-                            onChange={(e) => setNewTrade({ ...newTrade, notes: e.target.value })}
-                            placeholder="Trade reasoning, strategy, market analysis..."
-                            rows={3}
-                            className="bg-input border-border text-foreground"
-                        />
-                    </div>
+                    <Controller
+                        control={control}
+                        name="note"
+                        render={({ field: { value, onChange } }) => {
+                            return (
+                                <div>
+                                    <Label htmlFor="notes" className="text-card-foreground">
+                                        Notes
+                                    </Label>
+                                    <Textarea
+                                        id="notes"
+                                        value={value}
+                                        onChange={(e) => onChange(e.target.value)}
+                                        placeholder="Trade reasoning, strategy, market analysis..."
+                                        rows={3}
+                                        className="bg-input border-border text-foreground"
+                                    />
+                                </div>)
+                        }} />
 
-                    <Button onClick={handleSubmit(handleAddTrade)} className="w-full bg-primary hover:bg-primary/90">
-                        Add Trade
+                    <Button disabled={isPending} onClick={handleSubmit(handleAddTrade)} className="w-full bg-primary hover:bg-primary/90">
+                        {isPending ? "Creating..." : "Add Trade"}
                     </Button>
                 </div>
             </DialogContent>

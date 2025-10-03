@@ -21,19 +21,23 @@ import {
 import { useReferences } from "@/components/providers/reference-data-provider"
 import { Symbol } from "@/lib/types/trade"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
+import { Badge } from "@/components/ui/badge"
 
 export function SymbolSelector({
     placeholder = 'Select symbol...',
     searchPlaceholder = "Search symbol...",
-    emptyText = "No symbols data."
+    emptyText = "No symbols data.",
+    value,
+    onChange
 }: {
     placeholder?: string,
     searchPlaceholder?: string
-    emptyText?: string
+    emptyText?: string,
+    value?: string,
+    onChange?: (val: string) => void
 }) {
     const { symbols } = useReferences();
     const [open, setOpen] = React.useState(false)
-    const [value, setValue] = React.useState("")
 
     const groupedByCategory = symbols.reduce((acc: Record<string, Symbol[]>, order: Symbol) => {
         const { type } = order;
@@ -43,6 +47,14 @@ export function SymbolSelector({
         acc[type].push(order);
         return acc;
     }, {});
+
+    const renderSelectedValue = (value: string) => {
+        const selected = symbols.find((item) => item.id === value);
+        return <div className="flex items-center gap-2">
+            <div>{selected?.symbol}</div>
+            <Badge variant={"secondary"} className="rounded-sm uppercase text-xs">{selected?.type}</Badge>
+        </div>
+    }
 
     return (
         <Popover open={open} onOpenChange={setOpen} modal>
@@ -54,12 +66,12 @@ export function SymbolSelector({
                     className="w-full h-9 bg-input hover:bg-input justify-between border"
                 >
                     {value
-                        ? symbols.find((item) => item.symbol === value)?.symbol
+                        ? renderSelectedValue(value)
                         : placeholder}
                     <ChevronsUpDownIcon className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
+                </Button >
             </PopoverTrigger>
-            <PopoverContent className="w-full py-0 px-2">
+            <PopoverContent className="w-max-content p-0" align="start">
                 <Command>
                     <CommandInput placeholder={searchPlaceholder} />
                     <CommandList>
@@ -69,24 +81,26 @@ export function SymbolSelector({
                                 Object.keys(groupedByCategory).map(key => {
                                     const data = groupedByCategory[key];
                                     return (<CommandGroup key={key} heading={<span className="capitalize">{key}</span>} className="overflow-auto">
-                                        {data.map((item) => (
-                                            <CommandItem
-                                                key={item.symbol}
-                                                value={item.symbol}
-                                                onSelect={(currentValue) => {
-                                                    setValue(currentValue === value ? "" : currentValue)
-                                                    setOpen(false)
-                                                }}
-                                            >
-                                                <CheckIcon
-                                                    className={cn(
-                                                        "mr-2 h-4 w-4",
-                                                        value === item.symbol ? "opacity-100" : "opacity-0"
-                                                    )}
-                                                />
-                                                {item.symbol}
-                                            </CommandItem>
-                                        ))}
+                                        {data.map((item) => {
+                                            return (
+                                                <CommandItem
+                                                    key={item.symbol}
+                                                    value={item.id}
+                                                    onSelect={() => {
+                                                        onChange?.(item.id)
+                                                        setOpen(false)
+                                                    }}
+                                                >
+                                                    <CheckIcon
+                                                        className={cn(
+                                                            "mr-2 h-4 w-4",
+                                                            value === item.id ? "opacity-100" : "opacity-0"
+                                                        )}
+                                                    />
+                                                    {item.symbol}
+                                                </CommandItem>
+                                            )
+                                        })}
                                     </CommandGroup>)
                                 })
                             }

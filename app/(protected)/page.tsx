@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -10,7 +10,7 @@ import {
 } from "lucide-react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/components/providers/auth-provider"
-import { TradeEntry, TradingRule } from "@/lib/types/trade"
+import { TradeEntry } from "@/lib/types/trade"
 import StatCards from "@/components/custom/stat-cards"
 import TradingRulesModal from "@/components/custom/modals/trading-rules-modal"
 import SymbolManageModal from "@/components/custom/modals/symbol-manage-modal"
@@ -18,6 +18,7 @@ import ProfileDropdown from "@/components/custom/profile-dropdown"
 import LastTradingHistory from "@/components/custom/last-trading-history"
 import { useAccounts } from "@/components/providers/account-provider"
 import AccountCreateForm from "@/components/custom/account-create-form/page"
+import { createClient } from "@/utils/supabase/client"
 
 const initialTrades: TradeEntry[] = [
   {
@@ -50,88 +51,15 @@ const initialTrades: TradeEntry[] = [
   },
 ]
 
-// Initial trading rules
-const initialRules: TradingRule[] = [
-  {
-    id: "1",
-    title: "Always set SL/TP",
-    description: "Every trade must have both stop loss and take profit levels defined",
-    isActive: true,
-    createdAt: "2024-01-01",
-  },
-  {
-    id: "2",
-    title: "Follow market structure",
-    description: "Only trade in direction of higher timeframe trend",
-    isActive: true,
-    createdAt: "2024-01-01",
-  },
-  {
-    id: "3",
-    title: "Risk max 2% per trade",
-    description: "Position size should not risk more than 2% of account balance",
-    isActive: true,
-    createdAt: "2024-01-01",
-  },
-]
-
 export default function TradingJournal() {
   const { user } = useAuth();
 
-  const [isLoading, setIsLoading] = useState(true)
-  const router = useRouter()
-
   const { accounts, currentAccount, changeAccount } = useAccounts();
-
-  const [newAccount, setNewAccount] = useState<{
-    name: string,
-    type: "forex" | "stocks" | "crypto",
-    initialDeposit: string
-  }>({
-    name: "",
-    type: "stocks",
-    initialDeposit: "",
-  })
-
-  const [trades, setTrades] = useState<TradeEntry[]>(initialTrades)
-
-
-  // State for trading rules management
-  const [rules, setRules] = useState<TradingRule[]>(initialRules)
   const [isRulesDialogOpen, setIsRulesDialogOpen] = useState(false)
-
   const [isSymbolDialogOpen, setIsSymbolDialogOpen] = useState(false)
-
-  useEffect(() => {
-    const checkAuth = () => {
-      try {
-
-        const savedTrades = localStorage.getItem("trades")
-        if (savedTrades) {
-          setTrades(JSON.parse(savedTrades))
-        }
-
-        const savedRules = localStorage.getItem("tradingRules")
-        if (savedRules) {
-          setRules(JSON.parse(savedRules))
-        }
-
-      } catch (error) {
-        console.error("Auth check failed:", error)
-        router.push("/auth/login")
-        return
-      }
-      setIsLoading(false)
-    }
-
-    checkAuth()
-  }, [router])
-
-  // Function to open edit trade dialog
-
-
+  
   // Show loading state while checking authentication
-  if (isLoading) {
+  if (!currentAccount) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="text-center">
@@ -212,10 +140,10 @@ export default function TradingJournal() {
         <StatCards />
 
         {/* Search and Filter */}
-        <LastTradingHistory rules={rules} />
+        <LastTradingHistory />
 
         {/* Trading Rules Management Dialog */}
-        <TradingRulesModal rules={rules} open={isRulesDialogOpen} onHide={() => {
+        <TradingRulesModal open={isRulesDialogOpen} onHide={() => {
           setIsRulesDialogOpen(false)
         }} />
 

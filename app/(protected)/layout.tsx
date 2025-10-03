@@ -2,7 +2,7 @@ import AccountProvider from '@/components/providers/account-provider'
 import AuthProvider from '@/components/providers/auth-provider'
 import ReferenceDataProvider from '@/components/providers/reference-data-provider'
 import { Account } from '@/lib/types/account'
-import { Symbol } from '@/lib/types/trade'
+import { Symbol, Rule } from '@/lib/types/trade'
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
 import React, { ReactNode } from 'react'
@@ -36,10 +36,20 @@ const ProtectedLayout = async ({ children }: { children: ReactNode }) => {
         return data as Symbol[];
     }
 
+    const getRulesRequest = async () => {
+        const { data: rule, error } = await supabase.from("rules").select().eq("isActive", true).or(`isSystem.eq.true,userId.eq.${data.user.id}`)
+
+        if (error) {
+            console.log("Can't load rules data. Error: ", error)
+            return [];
+        }
+        return rule as Rule[];
+    }
+
     return (
         <AuthProvider user={data.user!}>
             <AccountProvider accounts={accounts as Account[]}>
-                <ReferenceDataProvider getSymbolsRequest={getSymbolsRequest()}>
+                <ReferenceDataProvider getSymbolsRequest={getSymbolsRequest()} getRulesRequest={getRulesRequest()}>
                     {children}
                 </ReferenceDataProvider>
             </AccountProvider>

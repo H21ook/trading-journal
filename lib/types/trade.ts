@@ -9,26 +9,33 @@ export interface NewEntry {
   notes: string;
   riskRewardRatio?: "" | "1:1" | "1:2" | "1:3" | "1:5";
 }
+export enum Action {
+  BUY = "buy",
+  SELL = "sell",
+}
 
+export enum ActionType {
+  LIMIT = "limit",
+  MARKET = "market",
+  STOP = "stop",
+}
+
+export enum TradeStatus {
+  OPEN = "open",
+  CLOSED = "closed",
+}
 export interface TradeEntry {
+  accountId: number;
+  action: Action;
+  actionType: ActionType;
+  createdAt: string;
+  emotion: string;
   id: string;
-  accountId: string; // Added accountId to link trades to accounts
-  symbol: string;
-  action: "buy" | "sell";
-  quantity: number;
-  entryPrice: number;
-  exitPrice?: number;
-  takeProfitAmount?: number;
-  stopLossAmount?: number;
-  date: string;
-  notes: string;
-  status: "open" | "closed";
-  profitLoss?: number;
-  rulesFollowed?: string[]; // Added rules tracking
-  emotions?: string; // Added emotions field
-  hashtags?: string[]; // Added hashtags field
-  riskRewardRatio?: "" | "1:1" | "1:2" | "1:3" | "1:5"; // Added risk/reward ratio
-  closureType?: "TP" | "SL" | "BE" | "CUSTOM"; // Added closure type tracking
+  note?: string;
+  riskToReward: number;
+  status: TradeStatus;
+  symbolId: number;
+  userId: string;
 }
 
 export enum SymbolType {
@@ -39,7 +46,7 @@ export enum SymbolType {
   INDICES = "indices",
 }
 export interface Symbol {
-  id: string;
+  id: number;
   symbol: string;
   name: string;
   type: SymbolType;
@@ -47,7 +54,7 @@ export interface Symbol {
   createdAt: string;
 }
 
-export interface TradingRule {
+export interface Rule {
   id: string;
   title: string;
   description: string;

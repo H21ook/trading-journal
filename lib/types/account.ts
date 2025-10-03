@@ -1,5 +1,5 @@
 export interface Account {
-  id: string;
+  id: number;
   name: string;
   type: "forex" | "stocks" | "crypto";
   initialDeposit: number;

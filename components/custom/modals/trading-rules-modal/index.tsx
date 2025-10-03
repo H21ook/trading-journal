@@ -1,39 +1,38 @@
 "use client";
 
+import { useReferences } from '@/components/providers/reference-data-provider';
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { TradingRule } from '@/lib/types/trade'
+import { Rule } from '@/lib/types/trade'
 import { CheckSquare, Plus, Trash2 } from 'lucide-react'
 import React, { useState } from 'react'
 
 const TradingRulesModal = ({
     open,
     onHide = () => { },
-    rules: initialRules = []
 }: {
     open: boolean,
     onHide: () => void,
-    rules: TradingRule[]
 }) => {
-    const [rules, setRules] = useState<TradingRule[]>(initialRules)
+    const { rules } = useReferences();
     const [newRule, setNewRule] = useState({
         title: "",
         description: "",
     })
     const toggleRuleActive = (ruleId: string) => {
         const updatedRules = rules.map((rule) => (rule.id === ruleId ? { ...rule, isActive: !rule.isActive } : rule))
-        setRules(updatedRules)
+        // setRules(updatedRules)
         localStorage.setItem("tradingRules", JSON.stringify(updatedRules))
     }
 
     const handleCreateRule = () => {
         if (!newRule.title.trim() || !newRule.description.trim()) return
 
-        const rule: TradingRule = {
+        const rule: Rule = {
             id: Date.now().toString(),
             title: newRule.title,
             description: newRule.description,
@@ -42,7 +41,7 @@ const TradingRulesModal = ({
         }
 
         const updatedRules = [...rules, rule]
-        setRules(updatedRules)
+        // setRules(updatedRules)
         localStorage.setItem("tradingRules", JSON.stringify(updatedRules))
 
         setNewRule({
@@ -151,7 +150,7 @@ const TradingRulesModal = ({
                                                     variant="outline"
                                                     onClick={() => {
                                                         const updatedRules = rules.filter((r) => r.id !== rule.id)
-                                                        setRules(updatedRules)
+                                                        // setRules(updatedRules)
                                                         localStorage.setItem("tradingRules", JSON.stringify(updatedRules))
                                                     }}
                                                     className="border-red-500/30 text-red-400 hover:bg-red-500/20"
