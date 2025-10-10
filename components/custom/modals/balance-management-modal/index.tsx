@@ -29,7 +29,7 @@ const BalanceManagementModal = ({
         if (!newBalance || Number.parseFloat(newBalance) <= 0) return
 
         const amount = Number.parseFloat(newBalance)
-        const balanceBefore = currentAccount?.currentBalance || 0
+        const balanceBefore = currentAccount?.current_balance || 0
         let balanceAfter: number
 
         switch (balanceTransactionType) {
@@ -53,7 +53,7 @@ const BalanceManagementModal = ({
         // Create transaction record
         const transaction: BalanceTransaction = {
             id: Date.now().toString(),
-            accountId: currentAccount!.id,
+            account_id: currentAccount!.id,
             type: balanceTransactionType,
             amount: amount,
             balanceBefore: balanceBefore,
@@ -147,11 +147,11 @@ const BalanceManagementModal = ({
                     <div className="p-4 border border-border rounded-lg bg-muted/10">
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Current Balance:</span>
-                            <span className="text-card-foreground">${currentAccount?.currentBalance.toLocaleString()}</span>
+                            <span className="text-card-foreground">${currentAccount?.current_balance.toLocaleString()}</span>
                         </div>
                         <div className="flex justify-between text-sm">
                             <span className="text-muted-foreground">Available Balance:</span>
-                            <span className="text-card-foreground">${currentAccount?.currentBalance.toLocaleString()}</span>
+                            <span className="text-card-foreground">${currentAccount?.current_balance.toLocaleString()}</span>
                         </div>
                     </div>
 

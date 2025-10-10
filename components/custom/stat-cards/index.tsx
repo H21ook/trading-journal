@@ -79,9 +79,9 @@ const StatCards = () => {
                 </CardHeader>
                 <CardContent>
                     <div className="text-xl md:text-2xl font-bold text-card-foreground">
-                        ${currentAccount?.currentBalance?.toLocaleString()}
+                        ${currentAccount?.current_balance?.toLocaleString()}
                     </div>
-                    <p className="text-xs text-muted-foreground">Available: ${currentAccount?.currentBalance.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">Available: ${currentAccount?.current_balance.toLocaleString()}</p>
                 </CardContent>
             </Card>
 

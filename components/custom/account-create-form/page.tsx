@@ -16,12 +16,12 @@ const AccountCreateForm = () => {
     const { control, handleSubmit } = useForm<{
         name: string,
         type: string,
-        initialDeposit: string
+        initial_deposit: string
     }>({
         defaultValues: {
             name: "",
             type: "forex",
-            initialDeposit: ""
+            initial_deposit: ""
         }
     })
 
@@ -31,7 +31,7 @@ const AccountCreateForm = () => {
             const accountFormData = new FormData();
             accountFormData.append("name", newAccount.name);
             accountFormData.append("type", newAccount.type);
-            accountFormData.append("initialDeposit", newAccount.initialDeposit);
+            accountFormData.append("initial_deposit", newAccount.initial_deposit);
 
             const res = await createAccount(accountFormData);
 
@@ -122,7 +122,7 @@ const AccountCreateForm = () => {
                         />
                         <Controller
                             control={control}
-                            name="initialDeposit"
+                            name="initial_deposit"
                             rules={{
                                 required: "Please enter deposit amount.",
                                 validate: (val: string, formValues: FieldValues) => {

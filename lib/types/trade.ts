@@ -9,6 +9,7 @@ export interface NewEntry {
   notes: string;
   riskRewardRatio?: "" | "1:1" | "1:2" | "1:3" | "1:5";
 }
+
 export enum Action {
   BUY = "buy",
   SELL = "sell",
@@ -25,17 +26,18 @@ export enum TradeStatus {
   CLOSED = "closed",
 }
 export interface TradeEntry {
-  accountId: number;
+  account_id: number;
   action: Action;
-  actionType: ActionType;
-  createdAt: string;
+  action_type: ActionType;
+  created_at: string;
   emotion: string;
   id: string;
   note?: string;
-  riskToReward: number;
+  risk_to_reward: number;
   status: TradeStatus;
-  symbolId: number;
-  userId: string;
+  symbol_id: number;
+  user_id: string;
+  rule_ids: string[]
 }
 
 export enum SymbolType {
@@ -50,14 +52,15 @@ export interface Symbol {
   symbol: string;
   name: string;
   type: SymbolType;
-  isActive?: boolean;
-  createdAt: string;
+  is_active?: boolean;
+  created_at: string;
 }
 
 export interface Rule {
   id: string;
   title: string;
-  description: string;
-  isActive: boolean;
-  createdAt: string;
+  description?: string;
+  is_active: boolean;
+  is_system: boolean;
+  created_at: string;
 }

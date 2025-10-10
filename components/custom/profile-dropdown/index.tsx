@@ -30,7 +30,7 @@ const ProfileDropdown = () => {
                             <div className="hidden sm:block text-left">
                                 <div className="text-sm font-medium">{user?.email}</div>
                                 <div className="text-xs text-muted-foreground">
-                                    ${currentAccount?.currentBalance.toLocaleString()}
+                                    ${currentAccount?.current_balance.toLocaleString()}
                                 </div>
                             </div>
                         </div>

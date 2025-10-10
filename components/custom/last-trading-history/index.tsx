@@ -1,14 +1,13 @@
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Account } from '@/lib/types/account';
-import { TradeEntry } from '@/lib/types/trade';
-import { CheckSquare, ChevronRight, Edit3, MoreHorizontal, Plus, Search, Trash2, TrendingDown, TrendingUp } from 'lucide-react';
+
+import { TradeEntry, TradeStatus } from '@/lib/types/trade';
+import { ChevronRight, MoreHorizontal, Plus, Search, SquareCheck, SquarePen, SquareX, Trash2, TrendingDown, TrendingUp, X } from 'lucide-react';
 import React, { useCallback, useEffect, useState } from 'react'
 import AddTradeModal from '../modals/add-trade-modal';
 import EditTradeModal from '../modals/edit-trade-modal';
@@ -16,6 +15,9 @@ import { useAccounts } from '@/components/providers/account-provider';
 import { useReferences } from '@/components/providers/reference-data-provider';
 import { useAuth } from '@/components/providers/auth-provider';
 import { createClient } from '@/utils/supabase/client';
+import TablePagination from '../table-pagination';
+
+const tablePageSize = 10;
 
 const LastTradingHistory = () => {
 
@@ -23,6 +25,7 @@ const LastTradingHistory = () => {
     const { currentAccount } = useAccounts();
     const { rules, symbols } = useReferences();
     const [trades, setTrades] = useState<TradeEntry[]>([])
+    const [totalCount, setTotalCount] = useState<number>(0)
     const [searchTerm, setSearchTerm] = useState("")
     const [isLoading, setIsLoading] = useState(false)
     const [selectedStatus, setSelectedStatus] = useState("all")
@@ -34,12 +37,30 @@ const LastTradingHistory = () => {
     const [tradeToClose, setTradeToClose] = useState<TradeEntry | null>(null)
     const [expandedTrades, setExpandedTrades] = useState<Set<string>>(new Set())
 
-    const getTrades = useCallback(async () => {
+    const systemRules = rules.filter(item => item.is_system);
+    const getTrades = useCallback(async (page = 1, pageSize = 10) => {
         setIsLoading(true)
         try {
             const supabase = createClient();
             if (user) {
-                const { data } = await supabase.from("trades").select().eq("userId", user?.id);
+                const from = (page - 1) * pageSize
+                const to = from + pageSize - 1
+
+                // Нийт тоо авах
+                const { count: rowsCount } = await supabase
+                    .from('trades')
+                    .select('*', { count: 'exact', head: true })
+                    .eq('user_id', user.id)
+
+                setTotalCount(rowsCount || 0);
+
+                const { data } = await supabase.from("trades")
+                    .select()
+                    .eq("user_id", user?.id)
+                    .eq("account_id", currentAccount?.id)
+                    .order("created_at", { ascending: false })
+                    .range(from, to);
+
                 console.log("trades ", data)
                 setTrades(data as TradeEntry[]);
             } else {
@@ -53,7 +74,7 @@ const LastTradingHistory = () => {
     }, [user]);
 
     useEffect(() => {
-        getTrades();
+        getTrades(1, tablePageSize);
     }, [getTrades])
 
     const openCloseTradeDialog = (trade: TradeEntry) => {
@@ -68,10 +89,8 @@ const LastTradingHistory = () => {
         notes: "",
     })
 
-    const accountTrades = trades.filter((trade) => trade.accountId === currentAccount?.id)
-
-    const filteredTrades = accountTrades.filter((trade) => {
-        const symbol = symbols.find(item => item.id === trade.symbolId);
+    const filteredTrades = trades.filter((trade) => {
+        const symbol = symbols.find(item => item.id === trade.symbol_id);
         const matchesSearch =
             symbol?.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             symbol?.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -96,13 +115,6 @@ const LastTradingHistory = () => {
     //         notes: trade.notes,
     //     })
     //     setIsEditTradeDialogOpen(true)
-    // }
-
-    // const moveSLToBreakEven = (trade: TradeEntry) => {
-    //     const updatedTrade = { ...trade, stopLossAmount: trade.entryPrice }
-    //     const updatedTrades = trades.map((t) => (t.id === trade.id ? updatedTrade : t))
-    //     setTrades(updatedTrades)
-    //     localStorage.setItem("trades", JSON.stringify(updatedTrades))
     // }
 
     const toggleTradeExpansion = (tradeId: string) => {
@@ -171,59 +183,53 @@ const LastTradingHistory = () => {
                                 <TableHeader>
                                     <TableRow className="border-border hover:bg-muted/50">
                                         <TableHead className="text-card-foreground">Symbol</TableHead>
-                                        <TableHead className="text-card-foreground">Action</TableHead>
-                                        {/* <TableHead className="text-card-foreground">Quantity</TableHead>
-                                        <TableHead className="text-card-foreground">Entry Price</TableHead>
-                                        <TableHead className="text-card-foreground">Take Profit</TableHead>
-                                        <TableHead className="text-card-foreground">Stop Loss</TableHead>
-                                        <TableHead className="text-card-foreground">Exit Price</TableHead>
-                                        <TableHead className="text-card-foreground">P&L</TableHead> */}
-                                        <TableHead className="text-card-foreground">Status</TableHead>
+                                        <TableHead className="text-card-foreground text-center">Action Type</TableHead>
+                                        <TableHead className="text-card-foreground text-center">Action</TableHead>
+                                        {
+                                            systemRules.map(item => {
+                                                return (<TableHead key={`system_rule_${item.id}`} className="text-card-foreground text-center">{item.title}</TableHead>)
+                                            })
+                                        }
+                                        <TableHead className="text-card-foreground text-center">RR</TableHead>
+                                        <TableHead className="text-card-foreground text-center">Status</TableHead>
                                         <TableHead className="text-card-foreground">Date</TableHead>
                                         <TableHead className="text-card-foreground w-12"></TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {filteredTrades.map((trade) => {
-                                        const symbol = symbols.find(item => item.id === trade.symbolId)
+                                        const symbol = symbols.find(item => item.id === trade.symbol_id)
                                         return (
                                             <TableRow key={trade.id} className="border-border hover:bg-muted/50">
                                                 <TableCell className="font-medium text-card-foreground">
                                                     <div className="flex items-center gap-2">
                                                         {symbol?.symbol}
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className='uppercase text-center'>
+                                                    {trade.action_type}
+                                                </TableCell>
+                                                <TableCell className='text-center'>
+                                                    <Badge variant="outline" className="text-xs gap-2">
                                                         {trade.action === "buy" ? (
                                                             <TrendingUp className="w-4 h-4 text-green-400" />
                                                         ) : (
                                                             <TrendingDown className="w-4 h-4 text-red-400" />
                                                         )}
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Badge variant="outline" className="text-xs">
                                                         {trade.action.toUpperCase()}
                                                     </Badge>
                                                 </TableCell>
-                                                {/* <TableCell className="text-card-foreground">{trade.quantity}</TableCell>
-                                                <TableCell className="text-card-foreground">${trade.entryPrice.toFixed(2)}</TableCell>
-                                                <TableCell className="text-card-foreground">
-                                                    {trade.takeProfitAmount ? `$${trade.takeProfitAmount.toFixed(2)}` : "-"}
+                                                {
+                                                    systemRules.map(item => {
+                                                        return (<TableCell key={`cell_rule_${item.id}`}>
+                                                            <div className='flex justify-center w-full'>{trade.rule_ids.includes(item.id) ? <SquareCheck className='text-green-500' /> : <SquareX className='text-destructive' />}</div>
+                                                        </TableCell>)
+                                                    })
+                                                }
+                                                <TableCell className="text-muted-foreground text-sm text-center">
+                                                    1:{trade.risk_to_reward}
                                                 </TableCell>
-                                                <TableCell className="text-card-foreground">
-                                                    {trade.stopLossAmount ? `$${trade.stopLossAmount.toFixed(2)}` : "-"}
-                                                </TableCell>
-                                                <TableCell className="text-card-foreground">
-                                                    {trade.exitPrice ? `$${trade.exitPrice.toFixed(2)}` : "-"}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {trade.profitLoss !== undefined ? (
-                                                        <Badge className={getProfitLossColor(trade.profitLoss)}>
-                                                            ${trade.profitLoss.toFixed(2)}
-                                                        </Badge>
-                                                    ) : (
-                                                        "-"
-                                                    )}
-                                                </TableCell> */}
-                                                <TableCell>
+                                                <TableCell className='text-center'>
                                                     <Badge
                                                         className={`text-xs ${trade.status === "open"
                                                             ? "bg-blue-500/20 text-blue-400 border-blue-500/30"
@@ -234,7 +240,7 @@ const LastTradingHistory = () => {
                                                     </Badge>
                                                 </TableCell>
                                                 <TableCell className="text-muted-foreground text-sm">
-                                                    {new Date(trade.createdAt).toLocaleDateString()}
+                                                    {new Date(trade.created_at).toLocaleDateString()}
                                                 </TableCell>
                                                 <TableCell>
                                                     <DropdownMenu>
@@ -244,20 +250,21 @@ const LastTradingHistory = () => {
                                                             </Button>
                                                         </DropdownMenuTrigger>
                                                         <DropdownMenuContent align="end" className="bg-popover border-border">
-                                                            {trade.status === "open" && (
+                                                            {trade.status === TradeStatus.OPEN && (
                                                                 <>
-                                                                    {/* <DropdownMenuItem
+                                                                    <DropdownMenuItem
                                                                         className="text-popover-foreground cursor-pointer"
-                                                                        onClick={() => openEditTradeDialog(trade)}
+                                                                    // onClick={() => openEditTradeDialog(trade)}
                                                                     >
-                                                                        <Edit3 className="w-4 h-4 mr-2" />
-                                                                        Edit Trade
-                                                                    </DropdownMenuItem> */}
+                                                                        <SquarePen className="w-4 h-4 mr-2" />
+                                                                        Edit
+                                                                    </DropdownMenuItem>
                                                                     <DropdownMenuItem
                                                                         className="text-popover-foreground cursor-pointer"
                                                                         onClick={() => openCloseTradeDialog(trade)}
                                                                     >
-                                                                        Close Position
+                                                                        <X className="w-4 h-4 mr-2" />
+                                                                        Close
                                                                     </DropdownMenuItem>
                                                                     {/* {trade.stopLossAmount !== trade.entryPrice && (
                                                                         <DropdownMenuItem
@@ -269,10 +276,13 @@ const LastTradingHistory = () => {
                                                                     )} */}
                                                                 </>
                                                             )}
-                                                            <DropdownMenuItem className="text-destructive">
-                                                                <Trash2 className="w-4 h-4 mr-2" />
-                                                                Delete
-                                                            </DropdownMenuItem>
+                                                            {
+                                                                trade.status === TradeStatus.CLOSED ? <DropdownMenuItem className="text-destructive">
+                                                                    <Trash2 className="w-4 h-4 mr-2" />
+                                                                    Delete
+                                                                </DropdownMenuItem> : null
+                                                            }
+
                                                         </DropdownMenuContent>
                                                     </DropdownMenu>
                                                 </TableCell>
@@ -455,7 +465,10 @@ const LastTradingHistory = () => {
                                 </Card>
                             ))}
                         </div> */}
+
+
                     </div>
+                    <TablePagination totalCount={totalCount} pageSize={tablePageSize} onChangePage={getTrades} />
                 </CollapsibleContent>
             </Collapsible>
 

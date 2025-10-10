@@ -6,11 +6,11 @@ import { TradeStatus } from "../types/trade";
 
 export const createNewTrade = async (formData: FormData) => {
   const parsedData = {
-    accountId: formData.get("accountId"),
-    symbolId: formData.get("symbolId"),
-    actionType: formData.get("actionType"),
+    account_id: formData.get("account_id"),
+    symbol_id: formData.get("symbol_id"),
+    action_type: formData.get("action_type"),
     action: formData.get("action"),
-    riskToReward: formData.get("riskToReward"),
+    risk_to_reward: formData.get("risk_to_reward"),
     emotion: formData.get("emotion"),
     note: formData.get("note"),
     status: TradeStatus.OPEN,
@@ -27,7 +27,7 @@ export const createNewTrade = async (formData: FormData) => {
 
   const { data, error } = await supabase
     .from("trades")
-    .insert({ ...parsedData, userId: user.id })
+    .insert({ ...parsedData, user_id: user.id, rule_ids: rules })
     .select()
     .single();
 
@@ -36,24 +36,6 @@ export const createNewTrade = async (formData: FormData) => {
     return { isOk: false, error: error.message };
   }
 
-  const tradeRules = rules?.map((ruleId) => {
-    return {
-      ruleId,
-      tradeId: data.id,
-      userId: user.id,
-    };
-  });
-  // console.log(tradeRules);
-  const { error: tradeRuleError } = await supabase
-    .from("trade_rules")
-    .insert(tradeRules);
-
-  if (tradeRuleError) {
-    console.log(tradeRuleError);
-    await supabase.from("trades").delete().eq("id", data.id);
-    return { isOk: false, error: tradeRuleError.message };
-  }
-
   revalidatePath("/", "layout");
-  return { isOk: true };
+  return { isOk: true, data };
 };

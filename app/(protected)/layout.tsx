@@ -19,7 +19,7 @@ const ProtectedLayout = async ({ children }: { children: ReactNode }) => {
         .from("accounts")
         .select()
         // .eq("userId", data.user.id)
-        .order("createdAt", { ascending: false })
+        .order("created_at", { ascending: false })
 
     if (accountError) {
         console.log("get accounts error ", accountError);
@@ -27,7 +27,7 @@ const ProtectedLayout = async ({ children }: { children: ReactNode }) => {
     }
 
     const getSymbolsRequest = async () => {
-        const { data, error } = await supabase.from("symbols").select().eq("isActive", true).order("createdAt", { ascending: false })
+        const { data, error } = await supabase.from("symbols").select().eq("is_active", true).order("created_at", { ascending: false })
 
         if (error) {
             console.log("Can't load symbols data. Error: ", error)
@@ -37,7 +37,7 @@ const ProtectedLayout = async ({ children }: { children: ReactNode }) => {
     }
 
     const getRulesRequest = async () => {
-        const { data: rule, error } = await supabase.from("rules").select().eq("isActive", true).or(`isSystem.eq.true,userId.eq.${data.user.id}`)
+        const { data: rule, error } = await supabase.from("rules").select().or(`is_system.eq.true,user_id.eq.${data.user.id}`)
 
         if (error) {
             console.log("Can't load rules data. Error: ", error)
@@ -48,7 +48,7 @@ const ProtectedLayout = async ({ children }: { children: ReactNode }) => {
 
     return (
         <AuthProvider user={data.user!}>
-            <AccountProvider accounts={accounts as Account[]}>
+            <AccountProvider accounts={accounts as Account[]} isNoAccounts={!(accounts?.length > 0)}>
                 <ReferenceDataProvider getSymbolsRequest={getSymbolsRequest()} getRulesRequest={getRulesRequest()}>
                     {children}
                 </ReferenceDataProvider>

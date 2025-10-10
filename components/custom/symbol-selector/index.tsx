@@ -33,8 +33,8 @@ export function SymbolSelector({
     placeholder?: string,
     searchPlaceholder?: string
     emptyText?: string,
-    value?: string,
-    onChange?: (val: string) => void
+    value?: number,
+    onChange?: (val: number) => void
 }) {
     const { symbols } = useReferences();
     const [open, setOpen] = React.useState(false)
@@ -48,7 +48,7 @@ export function SymbolSelector({
         return acc;
     }, {});
 
-    const renderSelectedValue = (value: string) => {
+    const renderSelectedValue = (value: number) => {
         const selected = symbols.find((item) => item.id === value);
         return <div className="flex items-center gap-2">
             <div>{selected?.symbol}</div>
@@ -85,7 +85,7 @@ export function SymbolSelector({
                                             return (
                                                 <CommandItem
                                                     key={item.symbol}
-                                                    value={item.id}
+                                                    value={item.id.toString()}
                                                     onSelect={() => {
                                                         onChange?.(item.id)
                                                         setOpen(false)

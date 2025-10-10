@@ -22,7 +22,7 @@ const ReferenceDataProvider = ({ children, getSymbolsRequest, getRulesRequest }:
 
     return <ReferenceDataContext.Provider value={{
         symbols: data,
-        rules
+        rules,
     }}>
         {children}
     </ReferenceDataContext.Provider>
